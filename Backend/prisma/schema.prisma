@@ -1,0 +1,127 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ENUMS are not supported in SQLite, so they are represented as normal Strings.
+// Role: USER, DRIVER, ADMIN
+// RideStatus: PENDING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
+// DeliveryStatus: PENDING, PICKED_UP, IN_TRANSIT, DELIVERED, CANCELLED
+// TransactionType: DEPOSIT, WITHDRAWAL, PAYMENT, EARNING
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rides      Ride[]      @relation("PassengerRides")
+  deliveries Delivery[]  @relation("SenderDeliveries")
+  
+  driverProfile DriverProfile?
+  drivenRides   Ride[]         @relation("DriverRides")
+  drivenDeliveries Delivery[]  @relation("DriverDeliveries")
+
+  wallet     Wallet?
+}
+
+model DriverProfile {
+  id           String @id @default(uuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id])
+  vehicleType  String 
+  vehiclePlate String
+  licenseData  String 
+  isVerified   Boolean @default(false)
+  isOnline     Boolean @default(false)
+  currentLat   Float?
+  currentLng   Float?
+}
+
+model Ride {
+  id            String   @id @default(uuid())
+  passengerId   String
+  passenger     User     @relation("PassengerRides", fields: [passengerId], references: [id])
+  driverId      String?
+  driver        User?    @relation("DriverRides", fields: [driverId], references: [id])
+  pickupLat     Float
+  pickupLng     Float
+  pickupAddress String
+  dropoffLat    Float
+  dropoffLng    Float
+  dropoffAddress String
+  status        String   @default("PENDING")
+  fare          Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Delivery {
+  id             String   @id @default(uuid())
+  senderId       String
+  sender         User     @relation("SenderDeliveries", fields: [senderId], references: [id])
+  driverId       String?
+  driver         User?    @relation("DriverDeliveries", fields: [driverId], references: [id])
+  pickupAddress  String
+  pickupLat      Float
+  pickupLng      Float
+  dropoffAddress String
+  dropoffLat     Float
+  dropoffLng     Float
+  packageSize    String   
+  packageDetails String?
+  status         String   @default("PENDING")
+  fare           Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  balance   Float    @default(0.0)
+  currency  String   @default("USD")
+  
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  amount      Float
+  type        String
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model SupportChat {
+  id        String   @id @default(uuid())
+  userId    String?  // Nullable for non-logged in users
+  status    String   @default("ACTIVE") // ACTIVE, ESCALATED, CLOSED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages  SupportMessage[]
+}
+
+model SupportMessage {
+  id        String   @id @default(uuid())
+  chatId    String
+  chat      SupportChat @relation(fields: [chatId], references: [id])
+  role      String   // "system", "user", "assistant", "admin"
+  content   String
+  createdAt DateTime @default(now())
+}
