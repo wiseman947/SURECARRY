@@ -160,7 +160,7 @@ export const getActiveChats = async (req: Request, res: Response): Promise<void>
 
 export const getChatMessages = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const messages = await prisma.supportMessage.findMany({
       where: { chatId: id },
       orderBy: { createdAt: 'asc' }
@@ -173,7 +173,7 @@ export const getChatMessages = async (req: Request, res: Response): Promise<void
 
 export const adminReply = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { message } = req.body;
 
     if (!message) {
