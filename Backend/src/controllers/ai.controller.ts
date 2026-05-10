@@ -17,7 +17,7 @@ export const calculatePricing = (req: Request, res: Response): void => {
   }
 };
 
-export const fetchOptimalRoute = (req: Request, res: Response): void => {
+export const fetchOptimalRoute = async (req: Request, res: Response): Promise<void> => {
   try {
     const { origin, destination } = req.body;
 
@@ -26,7 +26,7 @@ export const fetchOptimalRoute = (req: Request, res: Response): void => {
       return;
     }
 
-    const routeData = getRouteOptimization(origin, destination);
+    const routeData = await getRouteOptimization(origin, destination);
     res.status(200).json(routeData);
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
