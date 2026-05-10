@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { validateEmail, validatePassword } from "../../utils/validation";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -14,20 +16,65 @@ export default function SignupPage() {
     confirmPassword: "",
   });
 
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateConfirmPassword = (password: string, confirm: string) => {
+    if (!confirm) return "Confirm password is required";
+    if (password !== confirm) return "Passwords do not match";
+    return null;
+  }
+
+  const isFormValid = 
+    formData.name && formData.phone && formData.state && formData.lg && formData.address &&
+    !validateEmail(formData.email) && 
+    validatePassword(formData.password).length === 0 &&
+    !validateConfirmPassword(formData.password, formData.confirmPassword);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const newData = { ...prev, [name]: value };
+      
+      if (name === "email") setEmailError(validateEmail(value));
+      if (name === "password") {
+        setPasswordErrors(validatePassword(value));
+        if (newData.confirmPassword) {
+           setConfirmPasswordError(validateConfirmPassword(value, newData.confirmPassword));
+        }
+      }
+      if (name === "confirmPassword") {
+        setConfirmPasswordError(validateConfirmPassword(newData.password, value));
+      }
+      return newData;
     });
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === "email") setEmailError(validateEmail(value));
+    if (name === "password") setPasswordErrors(validatePassword(value));
+    if (name === "confirmPassword") setConfirmPasswordError(validateConfirmPassword(formData.password, value));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
-      return;
-    }
+    const eErr = validateEmail(formData.email);
+    const pErrs = validatePassword(formData.password);
+    const cpErr = validateConfirmPassword(formData.password, formData.confirmPassword);
+    
+    setEmailError(eErr);
+    setPasswordErrors(pErrs);
+    setConfirmPasswordError(cpErr);
+
+    if (eErr || pErrs.length > 0 || cpErr) return;
+
+    setIsSubmitting(true);
 
     try {
       const { fetchApi } = await import('../../utils/api');
@@ -53,6 +100,7 @@ export default function SignupPage() {
     } catch (error: any) {
       console.error(error);
       alert(`Signup failed: ${error.message || 'Unknown error'}`);
+      setIsSubmitting(false);
     }
   };
 
@@ -82,7 +130,20 @@ export default function SignupPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Email</label>
-                <input name="email" type="email" placeholder="mail@example.com" onChange={handleChange} className="w-full border-gray-300 border rounded-xl p-3 sm:p-4 text-sm sm:text-base focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" required />
+                <input 
+                  name="email" 
+                  type="email" 
+                  placeholder="mail@example.com" 
+                  value={formData.email}
+                  onChange={handleChange} 
+                  onBlur={handleBlur}
+                  className={`w-full border rounded-xl p-3 sm:p-4 text-sm sm:text-base outline-none transition ${
+                    emailError 
+                      ? "border-red-500 focus:ring-2 focus:ring-red-500" 
+                      : "border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  }`} 
+                />
+                {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
               </div>
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Phone</label>
@@ -109,16 +170,76 @@ export default function SignupPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Password</label>
-                <input name="password" type="password" placeholder="••••••••" onChange={handleChange} className="w-full border-gray-300 border rounded-xl p-3 sm:p-4 text-sm sm:text-base focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" required />
+                <div className="relative">
+                  <input 
+                    name="password" 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    value={formData.password}
+                    onChange={handleChange} 
+                    onBlur={handleBlur}
+                    className={`w-full border rounded-xl p-3 sm:p-4 pr-12 text-sm sm:text-base outline-none transition ${
+                      passwordErrors.length > 0
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    }`} 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {passwordErrors.length > 0 && (
+                  <div className="text-red-500 text-xs mt-1 space-y-1">
+                    {passwordErrors.map((err, i) => (
+                      <p key={i}>• {err}</p>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Confirm</label>
-                <input name="confirmPassword" type="password" placeholder="••••••••" onChange={handleChange} className="w-full border-gray-300 border rounded-xl p-3 sm:p-4 text-sm sm:text-base focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition" required />
+                <div className="relative">
+                  <input 
+                    name="confirmPassword" 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    value={formData.confirmPassword}
+                    onChange={handleChange} 
+                    onBlur={handleBlur}
+                    className={`w-full border rounded-xl p-3 sm:p-4 pr-12 text-sm sm:text-base outline-none transition ${
+                      confirmPasswordError
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    }`} 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {confirmPasswordError && <p className="text-red-500 text-xs mt-1">{confirmPasswordError}</p>}
               </div>
             </div>
 
-            <button type="submit" className="w-full bg-blue-600 text-white mt-4 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5">
-              Create Account
+            <button 
+              type="submit" 
+              disabled={!isFormValid || isSubmitting}
+              className={`w-full mt-4 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg transition-all mt-2 ${
+                !isFormValid || isSubmitting
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed shadow-none"
+                  : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/30 hover:-translate-y-0.5"
+              }`}
+            >
+              {isSubmitting ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 

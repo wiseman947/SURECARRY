@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { validateEmail, validatePassword } from "../../utils/validation";
 
 export default function SigninPage() {
   const [formData, setFormData] = useState({
@@ -9,22 +11,41 @@ export default function SigninPage() {
     remember: false,
   });
 
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isFormValid = !validateEmail(formData.email) && validatePassword(formData.password).length === 0;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     });
+
+    if (name === "email") setEmailError(validateEmail(value));
+    if (name === "password") setPasswordErrors(validatePassword(value));
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === "email") setEmailError(validateEmail(value));
+    if (name === "password") setPasswordErrors(validatePassword(value));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.email || !formData.password) {
-      alert("Please enter your email and password.");
-      return;
-    }
+    const eErr = validateEmail(formData.email);
+    const pErrs = validatePassword(formData.password);
+    setEmailError(eErr);
+    setPasswordErrors(pErrs);
 
+    if (eErr || pErrs.length > 0) return;
+
+    setIsSubmitting(true);
     try {
       const { fetchApi, setToken } = await import('../../utils/api');
       
@@ -38,6 +59,7 @@ export default function SigninPage() {
       window.location.href = "/dashboard";
     } catch (error: any) {
       alert(`Signin failed: ${error.message || 'Unknown error'}`);
+      setIsSubmitting(false);
     }
   };
 
@@ -65,22 +87,48 @@ export default function SigninPage() {
                 placeholder="Ex. mail@example.com"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full border-gray-300 border rounded-xl p-3 sm:p-4 text-sm sm:text-base focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
-                required
+                onBlur={handleBlur}
+                className={`w-full border rounded-xl p-3 sm:p-4 text-sm sm:text-base outline-none transition ${
+                  emailError 
+                    ? "border-red-500 focus:ring-2 focus:ring-red-500" 
+                    : "border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                }`}
               />
+              {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
             </div>
             
             <div>
               <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Password</label>
-              <input
-                type="password"
-                name="password"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full border-gray-300 border rounded-xl p-3 sm:p-4 text-sm sm:text-base focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full border rounded-xl p-3 sm:p-4 pr-12 text-sm sm:text-base outline-none transition ${
+                    passwordErrors.length > 0
+                      ? "border-red-500 focus:ring-2 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {passwordErrors.length > 0 && (
+                <div className="text-red-500 text-xs mt-1 space-y-1">
+                  {passwordErrors.map((err, i) => (
+                    <p key={i}>• {err}</p>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between text-xs sm:text-sm">
@@ -101,9 +149,14 @@ export default function SigninPage() {
 
             <button
               type="submit"
-              className="w-full bg-orange-500 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg hover:bg-orange-600 shadow-lg shadow-orange-500/30 transition-all hover:-translate-y-0.5 mt-2"
+              disabled={!isFormValid || isSubmitting}
+              className={`w-full py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg transition-all mt-2 ${
+                !isFormValid || isSubmitting
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed shadow-none"
+                  : "bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/30 hover:-translate-y-0.5"
+              }`}
             >
-              Log In
+              {isSubmitting ? "Logging In..." : "Log In"}
             </button>
           </form>
 
