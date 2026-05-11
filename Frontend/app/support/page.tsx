@@ -47,13 +47,10 @@ export default function SupportPage() {
 
     try {
       // Create chat session logic
-      const res = await fetch("http://localhost:5000/api/chat/message", {
+      const data = await fetchApi('/chat/message', {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, chatId, userId: "anonymous" }),
       });
-
-      const data = await res.json();
       
       if (data.chatId) setChatId(data.chatId);
       if (data.status) setChatStatus(data.status);

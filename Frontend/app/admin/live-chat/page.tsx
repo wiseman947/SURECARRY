@@ -29,8 +29,7 @@ export default function LiveChatAdmin() {
   // Poll for active chats
   const loadChats = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/chat/active");
-      const data = await res.json();
+      const data = await fetchApi("/chat/active");
       setChats(data);
       setLoading(false);
     } catch (err) {
@@ -52,8 +51,7 @@ export default function LiveChatAdmin() {
 
   const loadMessages = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/chat/${id}/messages`);
-      const data = await res.json();
+      const data = await fetchApi(`/chat/${id}/messages`);
       setMessages(data);
     } catch (err) {
       console.error("Failed to load messages", err);
@@ -65,12 +63,10 @@ export default function LiveChatAdmin() {
     if (!replyText.trim() || !selectedChat) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/chat/${selectedChat}/admin-reply`, {
+      const data = await fetchApi(`/chat/${selectedChat}/admin-reply`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: replyText })
       });
-      const data = await res.json();
       setMessages(prev => [...prev, data]);
       setReplyText("");
       loadChats(); // Refresh status
